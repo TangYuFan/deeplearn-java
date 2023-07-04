@@ -1,0 +1,338 @@
+package tool.deeplearning;
+
+
+import ai.onnxruntime.*;
+import org.opencv.core.Core;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+
+/**
+ *   @desc : 中文分词 lightltp 中文词法分析（分词、词性标注）
+ *
+ *
+ *          参考推理文件：
+ *          test_onnxruntime_inference.py
+ *
+ *          哈工大参考文档：
+ *          http://ltp.ai/docs/quickstart.html#id8
+ *
+ *          ltp：
+ *          https://github.com/HIT-SCIR/ltp
+ *          是哈工大社会计算和信息检索研究中心（HIT-SCIR）开源的中文自然语言处理工具集，
+ *          用户可以使用 ltp 对中文文本进行分词、词性标注、命名实体识别、语义角色标注、依存句法分析、语义依存分析等等工作。
+ *
+ *   @auth : tyf
+ *   @date : 2022-05-17  09:21:23
+ */
+public class chinese_segment_lightltp_1 {
+
+
+
+    // 模型
+    public static OrtEnvironment env;
+    public static OrtSession session;
+
+    // 字典索引映射
+    public static Map<String, Integer> token_id_map = new HashMap<>();
+    public static Map<Integer, String> id_token_map = new HashMap<>();
+
+    // 27种词性列表
+    public static String[] pos_map_en = new String[]{
+            "n", "v", "wp", "u", "d",
+            "a", "m", "p", "r", "ns",
+            "c", "q", "nt", "nh", "nd",
+            "j", "i", "b", "ni", "nz",
+            "nl", "z", "k", "ws", "o",
+            "h", "e"};
+
+    // 27种词性列表的中文
+    public static String[] pos_map_ch = new String[]{
+            "名词", "动词", "标点", "助词", "副词",
+            "形容词", "数词", "介词", "代词", "地名",
+            "连词", "量词", "机构团体", "人名", "方位词",
+            "简称", "成语", "习用语", "其他名词", "专有名词",
+            "其他专名", "字符", "后缀", "外文字符", "拟声词",
+            "前缀", "错误字符"
+    };
+
+    // 环境初始化
+    public static void init(String weight) throws Exception{
+        // opencv 库
+        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+
+        env = OrtEnvironment.getEnvironment();
+        session = env.createSession(weight, new OrtSession.SessionOptions());
+
+        // 打印模型信息,获取输入输出的shape以及类型：
+        System.out.println("---------模型输入-----------");
+        session.getInputInfo().entrySet().stream().forEach(n->{
+            String inputName = n.getKey();
+            NodeInfo inputInfo = n.getValue();
+            long[] shape = ((TensorInfo)inputInfo.getInfo()).getShape();
+            String javaType = ((TensorInfo)inputInfo.getInfo()).type.toString();
+            System.out.println(inputName+" -> "+ Arrays.toString(shape)+" -> "+javaType);
+        });
+        System.out.println("---------模型输出-----------");
+        session.getOutputInfo().entrySet().stream().forEach(n->{
+            String outputName = n.getKey();
+            NodeInfo outputInfo = n.getValue();
+            long[] shape = ((TensorInfo)outputInfo.getInfo()).getShape();
+            String javaType = ((TensorInfo)outputInfo.getInfo()).type.toString();
+            System.out.println(outputName+" -> "+Arrays.toString(shape)+" -> "+javaType);
+        });
+        session.getMetadata().getCustomMetadata().entrySet().forEach(n->{
+            System.out.println("元数据:"+n.getKey()+","+n.getValue());
+        });
+
+
+
+
+    }
+
+    public static class TextObj{
+        // 需要处理的文本
+        String text;
+        // 保存每个分割的单词
+        ArrayList<String> words = new ArrayList<>();
+        // 保存每个分割的单词的词性
+        ArrayList<String> poss_en = new ArrayList<>();
+        ArrayList<String> poss_ch = new ArrayList<>();
+        public TextObj(String text) {
+            this.text = text;
+        }
+        public static int getMaxIndex(float[] array) {
+            int maxIndex = 0;
+            float maxVal = array[0];
+            for (int i = 1; i < array.length; i++) {
+                if (array[i] > maxVal) {
+                    maxVal = array[i];
+                    maxIndex = i;
+                }
+            }
+            return maxIndex;
+        }
+        // 模型推理
+        public void inference() throws Exception{
+
+            System.out.println("----------------------------inference------------------------------");
+
+            // 每个字符
+            char[] chars = text.toCharArray();
+            List<String> charSrt = new ArrayList<>();
+            for (int i = 0; i < chars.length; i++) {
+                charSrt.add(String.valueOf(chars[i]));
+            }
+            charSrt.add(0,"[CLS]");
+            charSrt.add("[SEP]");
+            // 文本转id索引
+            List<Integer> ids = new ArrayList<>();
+            for (int i = 0; i < charSrt.size(); i++) {
+                String s = charSrt.get(i);
+                Integer id = token_id_map.get(s.toLowerCase());
+                // 可能存在字库中不存在的字,使用固定的id
+                if(id!=null){
+                    ids.add(id);
+                }else {
+                    ids.add(1);
+                }
+            }
+
+            // 打印文本和id索引
+//            System.out.println("打印文本和id索引");
+//            System.out.println(Arrays.toString(charSrt.toArray()));
+//            System.out.println(Arrays.toString(ids.toArray()));
+
+            // 模型输入
+            int count = ids.size();
+            long[] inputIds = new long[count];
+            long[] attentionMask = new long[count];
+            long[] tokenTypeIds = new long[count];
+            long[] shape = new long[]{1, count};
+
+            // ---------模型输入-----------
+            // input_ids -> [-1, -1] -> INT64
+            // attention_mask -> [-1, -1] -> INT64
+            // token_type_ids -> [-1, -1] -> INT64
+            for(int i=0; i < ids.size(); i ++) {
+                inputIds[i] = ids.get(i);
+                attentionMask[i] = 1;
+                tokenTypeIds[i] = 0;
+            }
+
+            // ---------模型输入-----------
+            // input_ids -> [-1, -1] -> INT64
+            // attention_mask -> [-1, -1] -> INT64
+            // token_type_ids -> [-1, -1] -> INT64
+            // 输入数组转为张量
+            OnnxTensor input_ids = OnnxTensor.createTensor(env, OrtUtil.reshape(inputIds, shape));
+            OnnxTensor attention_mask = OnnxTensor.createTensor(env, OrtUtil.reshape(attentionMask, shape));
+            OnnxTensor token_type_ids = OnnxTensor.createTensor(env, OrtUtil.reshape(tokenTypeIds, shape));
+
+            Map<String,OnnxTensor> input = new HashMap<>();
+            input.put("input_ids",input_ids);
+            input.put("attention_mask",attention_mask);
+            input.put("token_type_ids",token_type_ids);
+
+            // 推理
+            OrtSession.Result out = session.run(input);
+
+
+            // ---------模型输出-----------
+            // seg_output -> [-1, -1, 2] -> FLOAT
+            // pos_output -> [-1, -1, 27] -> FLOAT
+            // char_input -> [-1, -1, 256] -> FLOAT
+            OnnxValue onnxValue1 = out.get(0);
+            OnnxValue onnxValue2 = out.get(1);
+            OnnxValue onnxValue3 = out.get(2);
+
+            // 1 * n * 2 其中n就是输入文本的长度,2代表当前字是否是一个新的词语的开始
+            float[][][] seg_output = (float[][][]) onnxValue1.getValue();
+            // 1 * n * 27 其中n就是输入文本的长度,27代表了27中词性的概率
+            float[][][] pos_output = (float[][][]) onnxValue2.getValue();
+            // 这个用于后续的命名实体识别
+            float[][][] char_input = (float[][][]) onnxValue3.getValue();
+
+
+            StringBuffer tmp = new StringBuffer();
+            // 遍历每个字
+            for(int i=0;i<seg_output[0].length;i++){
+                // 2维,表示每个字是否属于单词的开始
+                float seg_1 = seg_output[0][i][0];
+                float seg_2 = seg_output[0][i][1];
+                // 遇到了单词的开始
+                if(seg_1<seg_2){
+                    // 保存上一个单词
+                    if(tmp.toString().length()>0){
+                        words.add(tmp.toString());
+                    }
+                    // 重新创建一个单词,并拼接当前字
+                    tmp = new StringBuffer();
+                    tmp.append(chars[i]);
+                    // 每次一个新开始的单词,取第一个字的词性作为单词词性
+                    // 27维,表示词性的概率,获取最大索引
+                    float[] pos = pos_output[0][i];
+                    int maxIndex = getMaxIndex(pos);
+                    // 根据最大概率索引从词性列表中取出词性字符串
+                    poss_en.add(pos_map_en[maxIndex]);
+                    poss_ch.add(pos_map_ch[maxIndex]);
+                }else{
+                    tmp.append(chars[i]);
+                }
+            }
+            // 保存最后一个单词
+            if(tmp.toString().length()>0){
+                words.add(tmp.toString());
+            }
+        }
+        // 打印结果
+        public void show(){
+
+            System.out.println("结果:");
+//            System.out.println("分词:"+Arrays.toString(words.toArray()));
+//            System.out.println("词性:"+Arrays.toString(poss_en.toArray()));
+//            System.out.println("词性:"+Arrays.toString(poss_ch.toArray()));
+
+            System.out.println("原文:"+text);
+
+            // 查找最大长度
+            int maxLength1 = 0;
+            for (String str : words) {
+                int length = str.length();
+                if (length > maxLength1) {
+                    maxLength1 = length;
+                }
+            }
+
+            int maxLength2 = 0;
+            for (String str : poss_en) {
+                int length = str.length();
+                if (length > maxLength2) {
+                    maxLength2 = length;
+                }
+            }
+
+            int maxLength3 = 0;
+            for (String str : poss_ch) {
+                int length = str.length();
+                if (length > maxLength3) {
+                    maxLength3 = length;
+                }
+            }
+
+
+            // 打印成表格
+            int count = words.size();
+            for (int i = 0; i < count; i++) {
+                String col1 = words.get(i);
+                String col2 = poss_en.get(i);
+                String col3 = poss_ch.get(i);
+                String formattedRow = String.format("%-" + maxLength1 + "s | %-" + maxLength2 + "s | %-" + maxLength3 + "s", col1, col2, col3);
+                System.out.println(formattedRow);
+            }
+
+        }
+    }
+
+    // 将字符和id索引进行保存
+    public static void initVocab(String path) throws Exception{
+
+        // 字符 => index
+        try(BufferedReader br = Files.newBufferedReader(Paths.get(path), StandardCharsets.UTF_8)) {
+            String line;
+            int index = 0;
+            while ((line = br.readLine()) != null) {
+                token_id_map.put(line.trim().toLowerCase(), index);
+                index ++;
+            }
+        }
+
+        // index => 字符
+        for (String key : token_id_map.keySet()) {
+            id_token_map.put(token_id_map.get(key), key);
+        }
+
+    }
+
+
+    public static void main(String[] args) throws Exception{
+
+        // ---------模型输入-----------
+        // input_ids -> [-1, -1] -> INT64
+        // attention_mask -> [-1, -1] -> INT64
+        // token_type_ids -> [-1, -1] -> INT64
+        // ---------模型输出-----------
+        // seg_output -> [-1, -1, 2] -> FLOAT
+        // pos_output -> [-1, -1, 27] -> FLOAT
+        // char_input -> [-1, -1, 256] -> FLOAT
+        String n2 = "segpos_cpu_opt.onnx";
+
+        // 模型
+        init(new File("").getCanonicalPath()+
+                "\\model\\deeplearning\\chinese_segment_lightltp\\"+n2);
+
+        // 加载字符库,每个字需要转为字符库中的索引
+        initVocab(new File("").getCanonicalPath()+
+                "\\model\\deeplearning\\chinese_segment_lightltp\\"+"vocab.txt");
+
+        // 需要处理的文本
+        String text = "小黑是爷爷从集市上买回来的一头小猪。因为浑身黑得发亮，所以叫小黑。" +
+                "小黑初来乍到，还挺生哩。你瞧，它不停地哼叽着，直直地竖起耳朵，警惕地观察着周围一切。" +
+                "我将一把鲜嫩的青草放在它跟前，它只轻轻嗅了一下，惊恐地望着我。奶奶告诉我：“猪娃胆小，过一天就好了。" +
+                "果然，第二天小黑就适应多了。我用手轻摸它，它轱辘一下躺在地上，闭着眼睛，伸直脚，翘起蹄，任我抓，任我挠。" +
+                "那舒服劲就别提了。我家的小黑实在是太可爱了！";
+        TextObj textObj = new TextObj(text);
+
+        // 模型: 实现分词 + 词性标注
+        textObj.inference();
+
+        // 输出结果
+        textObj.show();
+
+    }
+
+}
