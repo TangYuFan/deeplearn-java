@@ -1,12 +1,9 @@
 
 <table border="1">
   <tr>
-    <th><img src="img/yolov5_car_plate.png"></th>
-    <th><img src="img/yolov7_face_key_point.png"></th>
-  </tr>
-  <tr>
-    <th><img src="img/yolov5_car_plate.png"></th>
-    <th><img src="img/yolov7_face_key_point.png"></th>
+    <th><img src="img/yolov5_car_plate.png" width="200" height="150"></th>
+    <th><img src="img/yolov7_head.png" width="200" height="150"></th>
+    <th><img src="img/yolov7_face_key_point.png" width="200" height="150"></th>
   </tr>
 </table>
 
