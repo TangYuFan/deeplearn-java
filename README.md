@@ -1,4 +1,4 @@
-![Alt text](https://github.com/TangYuFan/deeplearn-java/blob/main/src/yolov5_car_plate.png)
+<img src="img/yolov5_car_plate.png" width="30%">
 
 
 <div class="container">
