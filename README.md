@@ -1,13 +1,16 @@
 
 <table border="1">
   <tr>
-    <th><img src="img/yolov5_car_plate.png" width="200" height="150"></th>
-    <th><img src="img/yolov7_head.png" width="200" height="150"></th>
-    <th><img src="img/yolov7_face_key_point.png" width="200" height="150"></th>
-    <th><img src="img/yolovp2.png" width="200" height="150"></th>
+    <th><img src="img/p1.png" width="200" height="150"></th>
+    <th><img src="img/p2.png" width="200" height="150"></th>
+    <th><img src="img/p3.png" width="200" height="150"></th>
+    <th><img src="img/p7.png" width="200" height="150"></th>
   </tr>
   <tr>
-    <th><img src="img/u2_net.png" width="200" height="150"></th>
+    <th><img src="img/p4.png" width="200" height="150"></th>
+    <th><img src="img/p8.png" width="200" height="150"></th>
+    <th><img src="img/p6.png" width="200" height="150"></th>
+    <th><img src="img/p9.png" width="200" height="150"></th>
   </tr>
 </table>
 
