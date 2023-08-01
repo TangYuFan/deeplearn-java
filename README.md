@@ -8,11 +8,13 @@
     <th><img src="img/p2.png" width="200" height="150"></th>
     <th><img src="img/p3.png" width="200" height="150"></th>
     <th><img src="img/p7.png" width="200" height="150"></th>
+    <th><img src="img/p7.png" width="200" height="150"></th>
   </tr>
   <tr>
     <th><img src="img/p4.png" width="200" height="150"></th>
     <th><img src="img/p8.png" width="200" height="150"></th>
     <th><img src="img/p6.png" width="200" height="150"></th>
+    <th><img src="img/p9.png" width="200" height="150"></th>
     <th><img src="img/p9.png" width="200" height="150"></th>
   </tr>
 </table>
