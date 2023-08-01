@@ -1,3 +1,6 @@
+<div class="row">
+<h3>deeplearn-java</h3>	
+</div>
 
 <table border="1">
   <tr>
@@ -15,9 +18,6 @@
 </table>
 
 <div class="container">
-<div class="row">
-<h3>deeplearn-java</h3>	
-</div>
 <div class="row">
 <div class="span4">
 <table class="table">
