@@ -6,6 +6,9 @@
     <th><img src="img/yolov7_face_key_point.png" width="200" height="150"></th>
     <th><img src="img/yolovp2.png" width="200" height="150"></th>
   </tr>
+  <tr>
+    <th><img src="img/u2_net.png" width="200" height="150"></th>
+  </tr>
 </table>
 
 <div class="container">
