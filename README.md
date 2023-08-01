@@ -4,6 +4,7 @@
     <th><img src="img/yolov5_car_plate.png" width="200" height="150"></th>
     <th><img src="img/yolov7_head.png" width="200" height="150"></th>
     <th><img src="img/yolov7_face_key_point.png" width="200" height="150"></th>
+    <th><img src="img/yolovp2.png" width="200" height="150"></th>
   </tr>
 </table>
 
