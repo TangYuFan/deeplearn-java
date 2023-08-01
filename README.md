@@ -1,7 +1,10 @@
-<img src="img/yolov5_car_plate.png" width="30%">
-<img src="img/yolov7_face_key_point.png" width="30%">
 
-
+<table border="1">
+  <tr>
+    <th><img src="img/yolov5_car_plate.png" width="30%"></th>
+    <th><img src="img/yolov7_face_key_point.png" width="30%"></th>
+  </tr>
+</table>
 
 <div class="container">
 <div class="row">
